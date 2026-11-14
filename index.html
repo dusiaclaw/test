@@ -146,7 +146,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:32px;margin-top:1
 
 <script>
 'use strict';
-const VERSION='1.0';
+const VERSION='1.1';
 /* ---------- i18n ---------- */
 const L={
 en:{app:'Audio Shelf',all:'All',en:'English',it:'Italian',empty:'Your shelves are empty.',addFirst:'Add your first book',
@@ -155,7 +155,7 @@ en:{app:'Audio Shelf',all:'All',en:'English',it:'Italian',empty:'Your shelves ar
  bTitle:'Title',bAuthor:'Author',bLang:'Book language',save:'Add to library',needFiles:'Choose at least one audio file.',
  upNote:'Each file becomes one chapter, sorted by file name.',saving:'Saving…',added:'Added to library',
  search:'Title or author',go:'Search',searching:'Searching…',nores:'No books found.',neterr:'Could not reach the catalog. Check your connection.',
- addBtn:'Add',inLib:'In library',more:'More results',catNote:'Public-domain recordings from LibriVox, hosted by the Internet Archive.',
+ addBtn:'Add',inLib:'In library',more:'More results',genre:'Genre',gAll:'All genres',catNote:'Public-domain recordings from LibriVox, hosted by the Internet Archive.',
  sitesNote:'Open a site, download the audio files to your phone, then add them under “From phone”.',
  play:'Play',resume:'Resume',chapters:'Chapters',chapter:'Chapter',dl:'Save offline',dling:(a,b)=>'Saving '+a+'/'+b+' — tap to stop',
  rmdl:'Remove offline copy',offline:'Saved offline',dlfail:'Download failed. The book still plays online.',del:'Delete book',
@@ -168,7 +168,7 @@ it:{app:'Audio Shelf',all:'Tutti',en:'Inglese',it:'Italiano',empty:'I tuoi scaff
  bTitle:'Titolo',bAuthor:'Autore',bLang:'Lingua del libro',save:'Aggiungi alla libreria',needFiles:'Scegli almeno un file audio.',
  upNote:'Ogni file diventa un capitolo, in ordine di nome.',saving:'Salvataggio…',added:'Aggiunto alla libreria',
  search:'Titolo o autore',go:'Cerca',searching:'Ricerca…',nores:'Nessun libro trovato.',neterr:'Catalogo non raggiungibile. Controlla la connessione.',
- addBtn:'Aggiungi',inLib:'In libreria',more:'Altri risultati',catNote:'Registrazioni di pubblico dominio di LibriVox, ospitate da Internet Archive.',
+ addBtn:'Aggiungi',inLib:'In libreria',more:'Altri risultati',genre:'Genere',gAll:'Tutti i generi',catNote:'Registrazioni di pubblico dominio di LibriVox, ospitate da Internet Archive.',
  sitesNote:'Apri un sito, scarica i file audio sul telefono, poi aggiungili da “Dal telefono”.',
  play:'Ascolta',resume:'Riprendi',chapters:'Capitoli',chapter:'Capitolo',dl:'Salva offline',dling:(a,b)=>'Salvataggio '+a+'/'+b+' — tocca per fermare',
  rmdl:'Rimuovi copia offline',offline:'Salvato offline',dlfail:'Download non riuscito. Il libro resta ascoltabile online.',del:'Elimina libro',
@@ -187,6 +187,21 @@ const SITES=[
  {n:'Lit2Go',u:'https://etc.usf.edu/lit2go/',l:'EN',en:'Stories and poems as MP3, from the University of South Florida.',it:'Racconti e poesie in MP3 (in inglese).'},
  {n:'Liber Liber',u:'https://liberliber.it/',l:'IT',en:'Italian classics, including free audio books.',it:'Classici italiani, con audiolibri gratuiti (Libro parlato).'},
  {n:'RaiPlay Sound – Ad alta voce',u:'https://www.raiplaysound.it/programmi/adaltavoce',l:'IT',en:'Italian radio readings of great novels (listen on the site).',it:'Grandi romanzi letti alla radio (ascolto sul sito).'}
+];
+const GENRES=[
+ {k:'fiction',en:'Fiction & novels',it:'Narrativa e romanzi',s:'fiction OR novel OR novels OR romanzo OR romanzi OR narrativa'},
+ {k:'children',en:'Children',it:'Bambini e ragazzi',s:'children OR juvenile OR "fairy tales" OR bambini OR ragazzi OR fiabe OR favole'},
+ {k:'short',en:'Short stories',it:'Racconti',s:'"short stories" OR "short story" OR racconti OR novelle'},
+ {k:'poetry',en:'Poetry',it:'Poesia',s:'poetry OR poems OR poem OR poesia OR poesie'},
+ {k:'mystery',en:'Mystery & crime',it:'Gialli',s:'mystery OR detective OR crime OR giallo OR gialli'},
+ {k:'adventure',en:'Adventure',it:'Avventura',s:'adventure OR avventura'},
+ {k:'scifi',en:'Sci-fi & fantasy',it:'Fantascienza e fantasy',s:'"science fiction" OR fantasy OR fantascienza OR fantastico'},
+ {k:'romance',en:'Romance',it:'Romantico',s:'romance OR "love stories" OR romantico OR amore'},
+ {k:'drama',en:'Theatre & plays',it:'Teatro',s:'drama OR plays OR play OR theater OR theatre OR teatro OR commedia OR tragedia'},
+ {k:'humor',en:'Humour',it:'Umorismo',s:'humor OR humour OR satire OR comedy OR umorismo OR satira'},
+ {k:'history',en:'History & biography',it:'Storia e biografie',s:'history OR biography OR memoirs OR storia OR biografia'},
+ {k:'philosophy',en:'Philosophy & religion',it:'Filosofia e religione',s:'philosophy OR religion OR filosofia OR religione'},
+ {k:'nonfiction',en:'Other non-fiction',it:'Altra saggistica',s:'"non-fiction" OR nonfiction OR essays OR science OR travel OR saggi OR saggistica OR scienza OR viaggi'}
 ];
 /* ---------- helpers ---------- */
 const $=s=>document.querySelector(s);
@@ -301,7 +316,7 @@ async function deleteBook(b){
  await loadBooks();history.back();
 }
 /* ---------- add ---------- */
-let cat={lang:LS.get('catLang',ui),q:'',page:1,rows:[],busy:false,more:false,err:false,done:false};
+let cat={lang:LS.get('catLang',ui),genre:'',q:'',page:1,rows:[],busy:false,more:false,err:false,done:false};
 function renderAdd(m){
  const tab=view.tab||'upload';
  let h=`<div class="chips">${['upload','catalog','sites'].map(x=>`<button class="chip ${tab===x?'on':''}" data-t="${x}">${t(x)}</button>`).join('')}</div>`;
@@ -316,6 +331,7 @@ function renderAdd(m){
  else if(tab==='catalog'){h+=`
   <p class="note">${t('catNote')}</p>
   <div class="chips">${['en','it'].map(l=>`<button class="chip ${cat.lang===l?'on':''}" data-l="${l}">${t(l)}</button>`).join('')}</div>
+  <select id="sG" aria-label="${t('genre')}" style="margin-bottom:10px"><option value="">${t('gAll')}</option>${GENRES.map(g=>`<option value="${g.k}" ${cat.genre===g.k?'selected':''}>${esc(g[ui]||g.en)}</option>`).join('')}</select>
   <form id="sForm" style="display:flex;gap:8px"><input type="search" id="sQ" placeholder="${t('search')}" value="${esc(cat.q)}" enterkeyhint="search"><button class="btn">${t('go')}</button></form>
   <div id="sRes">${resHTML()}</div>`}
  else h+=`<p class="note">${t('sitesNote')}</p>`+SITES.map(s=>`<a class="site" href="${s.u}" target="_blank" rel="noopener"><b>${esc(s.n)}</b> <span class="sans" style="font-size:12px;color:var(--dim)">${s.l}</span><small>${esc(s[ui]||s.en)}</small></a>`).join('');
@@ -324,6 +340,7 @@ function renderAdd(m){
  if(tab==='upload')bindUpload();
  if(tab==='catalog'){
   m.querySelectorAll('.chip[data-l]').forEach(c=>c.onclick=()=>{cat.lang=c.dataset.l;LS.set('catLang',cat.lang);cat.page=1;cat.rows=[];search()});
+  $('#sG').onchange=()=>{cat.genre=$('#sG').value;cat.q=$('#sQ').value.trim();cat.page=1;cat.rows=[];search()};
   $('#sForm').onsubmit=e=>{e.preventDefault();cat.q=$('#sQ').value.trim();cat.page=1;cat.rows=[];$('#sQ').blur();search()};
   bindRes();if(!cat.done&&!cat.busy)search();
  }
@@ -373,9 +390,10 @@ async function search(){
  const lang=cat.lang==='it'?'(Italian OR ita OR it)':'(English OR eng OR en)';
  const words=cat.q.replace(/[^\p{L}\p{N}\s']/gu,' ').trim();
  let q=`collection:librivoxaudio AND mediatype:audio AND language:${lang}`;
+ const g=GENRES.find(x=>x.k===cat.genre);if(g)q+=` AND subject:(${g.s})`;
  if(words)q+=` AND (title:(${words}) OR creator:(${words}))`;
  const u='https://archive.org/advancedsearch.php?q='+encodeURIComponent(q)+'&fl[]=identifier&fl[]=title&fl[]=creator&rows=25&page='+cat.page+'&sort[]='+encodeURIComponent('downloads desc')+'&output=json';
- const my=cat.lang+'|'+cat.q+'|'+cat.page;cat.key=my;
+ const my=cat.lang+'|'+cat.genre+'|'+cat.q+'|'+cat.page;cat.key=my;
  try{const r=await fetch(u);if(!r.ok)throw 0;const j=await r.json();if(cat.key!==my)return;
   const docs=j.response.docs||[];
   cat.rows.push(...docs.map(d=>({id:d.identifier,title:String(first(d.title)||d.identifier),author:[].concat(d.creator||[]).join(', ')})));
