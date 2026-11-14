@@ -1,5 +1,5 @@
 // Audio Shelf service worker: keeps the app shell available offline.
-const CACHE = 'audioshelf-shell-v2';
+const CACHE = 'audioshelf-shell-v4';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -9,7 +9,7 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
-  if (e.request.method !== 'GET' || u.origin !== location.origin) return; // audio + catalog go straight to the network
+  if (e.request.method !== 'GET' || u.origin !== location.origin || u.pathname.endsWith('version.json')) return; // audio + catalog go straight to the network
   e.respondWith(
     fetch(e.request).then(r => {
       const copy = r.clone();
