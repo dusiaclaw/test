@@ -195,8 +195,10 @@ input[type=range]{width:100%;accent-color:var(--accent);height:32px;margin-top:1
 
 <script>
 'use strict';
-const VERSION='1.4';
+const VERSION='1.5';
 const CHANGELOG=[
+ {v:'1.5',en:['YouTube: details fill in as soon as you paste a link (title, author, language, thumbnail)','New “Podcast or links” tab: add a podcast feed or direct audio links, with Save offline','Catalog: choose between LibriVox, all Internet Archive audiobooks and old-time radio'],
+  it:['YouTube: i dettagli si compilano appena incolli un link (titolo, autore, lingua, anteprima)','Nuova scheda “Podcast o link”: aggiungi un feed podcast o link audio diretti, con Salva offline','Catalogo: scegli tra LibriVox, tutti gli audiolibri di Internet Archive e radio d’epoca']},
  {v:'1.4',en:['Add books from YouTube links (played with YouTube’s own player)','Pocket mode: dark, locked screen while a YouTube book plays','“Find in free catalog” for YouTube books'],
   it:['Aggiungi libri da link YouTube (riprodotti con il lettore di YouTube)','Modalità tasca: schermo scuro e bloccato durante l’ascolto da YouTube','“Cerca nel catalogo gratuito” per i libri YouTube']},
  {v:'1.3',en:['Online rating on the book page and in the catalog','Continue listening row, search, sorting and shelves by status','Edit book details and chapter order','Catalog detail page with description and length','Listening stats','Custom skip lengths, auto-rewind, volume boost, skip silence','Backup and restore, Wi-Fi-only downloads','Update popup and changelog'],
@@ -232,6 +234,11 @@ en:{app:'Audio Shelf',all:'All',en:'English',it:'Italian',empty:'Your shelves ar
  data:'Your data',backup:'Back up',restore:'Restore',backupNote:'The backup holds your library list, listening positions, stats and settings — not the audio files.',
  restored:(a,s)=>a+' book'+(a==1?'':'s')+' restored'+(s?', '+s+' uploaded book'+(s==1?'':'s')+' skipped (add the audio files again)':''),badFile:'This is not an Audio Shelf backup file.',
  updT:'Update available',updMsg:v=>'Version '+v+' of Audio Shelf is ready.',updNow:'Update now',later:'Later',upToDate:'You have the latest version.',checkUpd:'Check for updates',
+ links:'Podcast or links',lkNote:'Paste the address of a podcast feed (each episode becomes a chapter), or direct links to audio files, one per line. These books stream and can be saved offline when the site allows it.',
+ lkLabel:'Feed address or audio links',lkPh:'https://example.org/feed.xml\n\nor\n\nhttps://example.org/chapter-01.mp3\nhttps://example.org/chapter-02.mp3',
+ lkNeed:'Paste a feed address or at least one audio link.',feedErr:'Could not read a podcast feed at this address. The site may not allow apps to read it, or it is not a feed.',
+ lkFeed:n=>n+' episode'+(n==1?'':'s')+' found',lkFiles:n=>n+' audio link'+(n==1?'':'s'),checking:'Checking…',
+ coll:'Collection',catNoteAll:'Free recordings hosted by the Internet Archive. Tap a book for details.',
  youtube:'YouTube',ytNote:'Paste a YouTube link. The book plays inside the app with YouTube’s own player: it needs internet, cannot be saved offline, and stops if the screen turns off — use Pocket mode to keep listening with a dark screen.',
  ytLink:'YouTube link',ytStamps:'Chapter times (optional)',ytStampsPh:'Paste the chapter list from the video description, one per line:\n0:00 Chapter 1\n12:45 Chapter 2',ytBad:'This does not look like a YouTube link.',
  ytWhole:'Full recording',ytIntro:'Start',ytOpen:'Open on YouTube',ytBlocked:'The owner of this video does not allow playing it inside other apps.',ytGone:'This video is not available.',
@@ -262,6 +269,11 @@ it:{app:'Audio Shelf',all:'Tutti',en:'Inglese',it:'Italiano',empty:'I tuoi scaff
  data:'I tuoi dati',backup:'Backup',restore:'Ripristina',backupNote:'Il backup contiene l’elenco dei libri, le posizioni di ascolto, le statistiche e le impostazioni, non i file audio.',
  restored:(a,s)=>a+' libr'+(a==1?'o':'i')+' ripristinat'+(a==1?'o':'i')+(s?', '+s+' libr'+(s==1?'o':'i')+' caricat'+(s==1?'o':'i')+' saltat'+(s==1?'o':'i')+' (aggiungi di nuovo i file audio)':''),badFile:'Questo non è un file di backup di Audio Shelf.',
  updT:'Aggiornamento disponibile',updMsg:v=>'La versione '+v+' di Audio Shelf è pronta.',updNow:'Aggiorna ora',later:'Più tardi',upToDate:'Hai già l’ultima versione.',checkUpd:'Cerca aggiornamenti',
+ links:'Podcast o link',lkNote:'Incolla l’indirizzo di un feed podcast (ogni episodio diventa un capitolo) oppure link diretti a file audio, uno per riga. Questi libri si ascoltano in streaming e si possono salvare offline se il sito lo permette.',
+ lkLabel:'Indirizzo del feed o link audio',lkPh:'https://example.org/feed.xml\n\noppure\n\nhttps://example.org/capitolo-01.mp3\nhttps://example.org/capitolo-02.mp3',
+ lkNeed:'Incolla l’indirizzo di un feed o almeno un link audio.',feedErr:'Impossibile leggere un feed podcast a questo indirizzo. Il sito potrebbe non permetterlo alle app, oppure non è un feed.',
+ lkFeed:n=>n+' episod'+(n==1?'io trovato':'i trovati'),lkFiles:n=>n+' link audio',checking:'Controllo…',
+ coll:'Raccolta',catNoteAll:'Registrazioni gratuite ospitate da Internet Archive. Tocca un libro per i dettagli.',
  youtube:'YouTube',ytNote:'Incolla un link di YouTube. Il libro viene riprodotto nell’app con il lettore di YouTube: serve internet, non si può salvare offline e si ferma se lo schermo si spegne — usa la Modalità tasca per ascoltare con lo schermo scuro.',
  ytLink:'Link YouTube',ytStamps:'Tempi dei capitoli (facoltativo)',ytStampsPh:'Incolla l’elenco dei capitoli dalla descrizione del video, uno per riga:\n0:00 Capitolo 1\n12:45 Capitolo 2',ytBad:'Non sembra un link di YouTube.',
  ytWhole:'Registrazione completa',ytIntro:'Inizio',ytOpen:'Apri su YouTube',ytBlocked:'Il proprietario del video non permette di riprodurlo in altre app.',ytGone:'Questo video non è disponibile.',
@@ -295,6 +307,7 @@ const GENRES=[
  {k:'philosophy',en:'Philosophy & religion',it:'Filosofia e religione',s:'philosophy OR religion OR filosofia OR religione'},
  {k:'nonfiction',en:'Other non-fiction',it:'Altra saggistica',s:'"non-fiction" OR nonfiction OR essays OR science OR travel OR saggi OR saggistica OR scienza OR viaggi'}
 ];
+const COLLS=[{k:'librivoxaudio',en:'LibriVox',it:'LibriVox'},{k:'audio_bookspoetry',en:'All audiobooks & poetry',it:'Tutti gli audiolibri e poesia'},{k:'oldtimeradio',en:'Old-time radio (English only)',it:'Radio d’epoca (solo inglese)'}];
 /* ---------- helpers ---------- */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -331,6 +344,7 @@ async function loadBooks(){books=await dbAll('books');
  for(const b of books){if(b.hasCover&&!coverUrls[b.id]){const bl=await dbGet('covers',b.id);if(bl)coverUrls[b.id]=URL.createObjectURL(bl)}}}
 const book=id=>books.find(b=>b.id===id);
 const saveBook=b=>dbPut('books',b);
+const remote=b=>b.source==='ia'||b.source==='web';
 const akey=(b,i)=>b.id+'|'+(b.chapters[i].k??i);
 const started=b=>{const p=b.pos||{};return (p.ch||0)>0||(p.t||0)>5};
 const status=b=>b.finished?'done':started(b)?'prog':'new';
@@ -466,7 +480,7 @@ function renderBook(m,b){
  const p=b.pos||{ch:0,t:0};const st=started(b);const job=dlJobs[b.id];
  const offN=b.chapters.filter(c=>c.off).length;
  let dl='';
- if(b.source==='ia'){
+ if(remote(b)){
   if(job)dl=`<button class="btn ghost" id="dl">${t('dling',job.done,b.chapters.length)}</button>`;
   else if(offN===b.chapters.length)dl=`<button class="btn ghost" id="rmdl">✓ ${t('rmdl')}</button>`;
   else dl=`<button class="btn ghost" id="dl">⬇ ${t('dl')}</button>`;
@@ -478,7 +492,7 @@ function renderBook(m,b){
   <div class="row"><button class="btn" id="bPlay">▶ ${st?t('resume'):t('play')}</button>${st?`<button class="btn ghost" id="bRestart">${t('restart')}</button>`:''}</div>
   <div class="row">${dl}${b.source==='yt'?`<button class="btn ghost" id="bFind">🔎 ${t('findCat')}</button>`:''}<button class="btn ghost" id="bEdit">✎ ${t('edit')}</button></div>
   <ul class="list">${b.chapters.map((c,i)=>`<li><button class="ch ${player.id===b.id&&player.ch===i?'cur':''} ${i<p.ch||b.finished?'done':''}" data-i="${i}">
-   <span class="n">${i+1}</span><span class="t">${esc(c.title)}</span><span class="d">${c.off&&b.source==='ia'?'⬇ ':''}${c.dur?fmt(c.dur):''}</span></button></li>`).join('')}</ul>
+   <span class="n">${i+1}</span><span class="t">${esc(c.title)}</span><span class="d">${c.off&&remote(b)?'⬇ ':''}${c.dur?fmt(c.dur):''}</span></button></li>`).join('')}</ul>
   <button class="btn danger wide" id="bDel">${t('del')}</button>`;
  updateBookProg(b);if(b.chapters.some(c=>!c.dur))fillDurations(b);ensureRating(b);
  $('#bPlay').onclick=()=>playBook(b.id,p.ch,p.t);
@@ -549,11 +563,11 @@ function renderEdit(m,b){
  };
 }
 /* ---------- add ---------- */
-let cat={lang:LS.get('catLang',ui),genre:'',q:'',page:1,rows:[],busy:false,more:false,err:false,done:false};
+let cat={lang:LS.get('catLang',ui),coll:LS.get('catColl','librivoxaudio'),genre:'',q:'',page:1,rows:[],busy:false,more:false,err:false,done:false};
 const metaCache={};
 function renderAdd(m){
  const tab=view.tab||'upload';
- let h=`<div class="chips">${['upload','catalog','youtube','sites'].map(x=>`<button class="chip ${tab===x?'on':''}" data-t="${x}">${t(x)}</button>`).join('')}</div>`;
+ let h=`<div class="chips">${['upload','catalog','youtube','links','sites'].map(x=>`<button class="chip ${tab===x?'on':''}" data-t="${x}">${t(x)}</button>`).join('')}</div>`;
  if(tab==='upload')h+=`
   <p class="note">${t('upNote')}</p>
   <label class="filebtn"><input type="file" id="fAudio" accept="audio/*,.mp3,.m4a,.m4b,.ogg,.opus,.wav,.flac,.aac" multiple><span class="btn ghost wide" id="fAudioL">🎧 ${t('pickAudio')}</span></label>
@@ -563,25 +577,36 @@ function renderAdd(m){
   <label for="uL">${t('bLang')}</label><select id="uL"><option value="en">${t('en')}</option><option value="it" ${ui==='it'?'selected':''}>${t('it')}</option></select>
   <div class="row"><button class="btn wide" id="uSave">${t('save')}</button></div>`;
  else if(tab==='catalog'){h+=`
-  <p class="note">${t('catNote')}</p>
-  <div class="chips">${['en','it'].map(l=>`<button class="chip ${cat.lang===l?'on':''}" data-l="${l}">${t(l)}</button>`).join('')}</div>
+  <p class="note">${t(cat.coll==='librivoxaudio'?'catNote':'catNoteAll')}</p>
+  <select id="sC" aria-label="${t('coll')}" style="margin-bottom:10px">${COLLS.map(c=>`<option value="${c.k}" ${cat.coll===c.k?'selected':''}>${esc(c[ui]||c.en)}</option>`).join('')}</select>
+  <div class="chips" ${cat.coll==='oldtimeradio'?'hidden':''}>${['en','it'].map(l=>`<button class="chip ${cat.lang===l?'on':''}" data-l="${l}">${t(l)}</button>`).join('')}</div>
   <select id="sG" aria-label="${t('genre')}" style="margin-bottom:10px"><option value="">${t('gAll')}</option>${GENRES.map(g=>`<option value="${g.k}" ${cat.genre===g.k?'selected':''}>${esc(g[ui]||g.en)}</option>`).join('')}</select>
   <form id="sForm" style="display:flex;gap:8px"><input type="search" id="sQ" placeholder="${t('search')}" value="${esc(cat.q)}" enterkeyhint="search"><button class="btn">${t('go')}</button></form>
   <div id="sRes">${resHTML()}</div>`}
  else if(tab==='youtube')h+=`<p class="note">${t('ytNote')}</p>
   <label for="yU">${t('ytLink')}</label><input type="text" id="yU" inputmode="url" placeholder="https://youtu.be/…" autocomplete="off">
+  <div id="yPrev"></div>
   <label for="yT">${t('bTitle')}</label><input type="text" id="yT" autocomplete="off">
   <label for="yA">${t('bAuthor')}</label><input type="text" id="yA" autocomplete="off">
   <label for="yL">${t('bLang')}</label><select id="yL"><option value="en">${t('en')}</option><option value="it" ${ui==='it'?'selected':''}>${t('it')}</option></select>
   <label for="yS">${t('ytStamps')}</label><textarea id="yS" rows="5" placeholder="${t('ytStampsPh')}"></textarea>
   <div class="row"><button class="btn wide" id="ySave">${t('save')}</button></div>`;
+ else if(tab==='links')h+=`<p class="note">${t('lkNote')}</p>
+  <label for="kU">${t('lkLabel')}</label><textarea id="kU" rows="5" placeholder="${t('lkPh')}" autocapitalize="off" spellcheck="false"></textarea>
+  <div id="kPrev"></div>
+  <label for="kT">${t('bTitle')}</label><input type="text" id="kT" autocomplete="off">
+  <label for="kA">${t('bAuthor')}</label><input type="text" id="kA" autocomplete="off">
+  <label for="kL">${t('bLang')}</label><select id="kL"><option value="en">${t('en')}</option><option value="it" ${ui==='it'?'selected':''}>${t('it')}</option></select>
+  <div class="row"><button class="btn wide" id="kSave">${t('save')}</button></div>`;
  else h+=`<p class="note">${t('sitesNote')}</p>`+SITES.map(s=>`<a class="site" href="${s.u}" target="_blank" rel="noopener"><b>${esc(s.n)}</b> <span class="sans" style="font-size:12px;color:var(--dim)">${s.l}</span><small>${esc(s[ui]||s.en)}</small></a>`).join('');
  m.innerHTML=h;
  m.querySelectorAll('.chip[data-t]').forEach(c=>c.onclick=()=>{view={v:'add',tab:c.dataset.t};history.replaceState(view,'');render()});
  if(tab==='upload')bindUpload();
  if(tab==='youtube')bindYT();
+ if(tab==='links')bindLinks();
  if(tab==='catalog'){
   m.querySelectorAll('.chip[data-l]').forEach(c=>c.onclick=()=>{cat.lang=c.dataset.l;LS.set('catLang',cat.lang);cat.page=1;cat.rows=[];search()});
+  $('#sC').onchange=()=>{cat.coll=$('#sC').value;LS.set('catColl',cat.coll);cat.q=$('#sQ').value.trim();cat.page=1;cat.rows=[];cat.done=false;render()};
   $('#sG').onchange=()=>{cat.genre=$('#sG').value;cat.q=$('#sQ').value.trim();cat.page=1;cat.rows=[];search()};
   $('#sForm').onsubmit=e=>{e.preventDefault();cat.q=$('#sQ').value.trim();cat.page=1;cat.rows=[];$('#sQ').blur();search()};
   bindRes();if(!cat.done&&!cat.busy)search();else queueRowRatings();
@@ -613,11 +638,41 @@ function parseStamps(txt){const out=[];
  for(const line of String(txt).split('\n')){const m=line.match(/(?:(\d{1,2}):)?(\d{1,2}):(\d{2})/);if(!m)continue;
   out.push({start:(+m[1]||0)*3600+(+m[2])*60+(+m[3]),title:line.replace(m[0],' ').replace(/^[\s\-–—:|.()\[\]]+|[\s\-–—:|.()\[\]]+$/g,'').trim()})}
  out.sort((a,b)=>a.start-b.start);return out.filter((c,i)=>!i||c.start>out[i-1].start)}
+/* fill a field automatically unless the user has typed something of their own there */
+function autoSet(el,val){if(!el||!val)return;if(!el.value||el.value===el.dataset.auto){el.value=val;el.dataset.auto=val}}
+const NOISE=/\b(full|complete|unabridged|audio\s?books?|audiolibr[oi]|complet[oa]|integrale|lettura|versione|hd|hq)\b/gi;
+function guessLang(s){const w=String(s).toLowerCase().split(/[^a-zàèéìòù]+/);
+ const it=['il','lo','la','gli','le','di','del','della','dei','e','ed','un','una','audiolibro','capitolo','italiano','completo','integrale','letto','da','che','per','con','nel','al','i'],
+  en=['the','of','and','a','an','audiobook','chapter','full','by','in','to','english','complete','unabridged','read','part','with','for'];
+ let a=0,b=0;for(const x of w){if(it.includes(x))a++;if(en.includes(x))b++}return a>b?'it':b>a?'en':''}
+const nameLike=s=>{const w=s.trim().split(/\s+/);return w.length>=2&&w.length<=4&&!/\d/.test(s)&&!/^(i|il|lo|la|le|gli|un|una|the|a|an)$/i.test(w[0])
+ &&w.every(x=>/^\p{Lu}[\p{L}.'’-]*$/u.test(x)||/^(de|di|da|del|della|van|von|d')$/i.test(x))};
+function ytGuess(raw){const lang=guessLang(raw);
+ const tidy=x=>x.replace(/\s+/g,' ').replace(/^[\s\-–—|:,.]+|[\s\-–—|:,.]+$/g,'').trim();
+ const s=tidy(String(raw).replace(/\(.*?\)|\[.*?\]|【.*?】/g,' ').replace(NOISE,' '));
+ let title=s,author='';
+ const m=s.match(/^(.+)\s+(?:by|di)\s+(.+)$/i);
+ if(m&&nameLike(tidy(m[2]))){title=tidy(m[1]);author=tidy(m[2])}
+ else{const parts=s.split(/\s+[-–—|]\s+|:\s+/).map(tidy).filter(Boolean);
+  if(parts.length>=2){let ni=-1;parts.forEach((x,i)=>{if(nameLike(x))ni=i});
+   if(ni>=0){author=parts[ni];title=parts.filter((_,i)=>i!==ni).join(' – ')}}}
+ return {title:title||s||String(raw),author,lang}}
 function bindYT(){
- $('#yU').onchange=async()=>{const id=ytId($('#yU').value);if(!id||$('#yT').value)return;
-  const w=encodeURIComponent('https://www.youtube.com/watch?v='+id);
-  for(const u of ['https://www.youtube.com/oembed?format=json&url='+w,'https://noembed.com/embed?url='+w]){
-   try{const j=await(await fetch(u)).json();if(j&&j.title){if(!$('#yT')||$('#yT').value)return;$('#yT').value=j.title;return}}catch(e){}}};
+ let tmr,lastId='';
+ const run=async()=>{const u=$('#yU');if(!u)return;const id=ytId(u.value);
+  if(!id){$('#yPrev').innerHTML='';lastId='';return}if(id===lastId)return;lastId=id;
+  $('#yPrev').innerHTML=`<div class="res">${coverHTML({id:'x',title:'YouTube',coverUrl:'https://i.ytimg.com/vi/'+id+'/hqdefault.jpg'})}<div class="m"><b id="yVt">${t('checking')}</b><small id="yCh"></small></div></div>`;
+  const w=encodeURIComponent('https://www.youtube.com/watch?v='+id);let j=null;
+  for(const a of ['https://www.youtube.com/oembed?format=json&url='+w,'https://noembed.com/embed?url='+w]){
+   try{const x=await(await fetch(a)).json();if(x&&x.title){j=x;break}}catch(e){}}
+  if(lastId!==id||!$('#yT'))return;
+  if(!j){$('#yVt').textContent='';return}
+  const g=ytGuess(j.title);autoSet($('#yT'),g.title);autoSet($('#yA'),g.author);
+  if(g.lang&&!$('#yL').dataset.touched)$('#yL').value=g.lang;
+  $('#yVt').textContent=j.title;$('#yCh').textContent=j.author_name||'';
+ };
+ $('#yU').oninput=()=>{clearTimeout(tmr);tmr=setTimeout(run,250)};$('#yU').onchange=run;
+ $('#yL').onchange=()=>{$('#yL').dataset.touched=1};
  $('#ySave').onclick=async()=>{
   const vid=ytId($('#yU').value);if(!vid)return toast(t('ytBad'));
   const ex=books.find(b=>b.ytId===vid);if(ex){view={v:'book',id:ex.id};history.replaceState(view,'');return render()}
@@ -626,6 +681,55 @@ function bindYT(){
   const id=newId();
   const b={id,ytId:vid,source:'yt',title:$('#yT').value.trim()||'YouTube '+vid,author:$('#yA').value.trim(),lang:$('#yL').value,added:Date.now(),
    coverUrl:'https://i.ytimg.com/vi/'+vid+'/hqdefault.jpg',pos:{ch:0,t:0},chapters:ch};
+  await saveBook(b);await loadBooks();toast(t('added'));view={v:'book',id};history.replaceState(view,'');render();
+ };
+}
+/* podcast feeds and direct audio links: the site itself offers these files */
+const AUDIO_RE=/\.(mp3|m4a|m4b|ogg|oga|opus|wav|flac|aac)(\?|#|$)/i;
+const linkLines=txt=>String(txt).split(/\s+/).filter(s=>/^https?:\/\/\S+\.\S+/i.test(s));
+const https=u=>String(u).replace(/^http:/i,'https:');
+const feedCache={};
+async function loadFeed(u){
+ if(feedCache[u])return feedCache[u];
+ const r=await fetch(u);if(!r.ok)throw 0;
+ const x=new DOMParser().parseFromString(await r.text(),'text/xml');
+ const ch=x.getElementsByTagName('channel')[0];if(x.getElementsByTagName('parsererror').length||!ch)throw 0;
+ const kid=(el,n)=>{const e=[...el.children].find(c=>c.tagName===n);return e?e.textContent.trim():''};
+ const items=[...x.getElementsByTagName('item')].slice(0,1000).map(it=>{
+  const en=[...it.getElementsByTagName('enclosure')].find(e=>/^audio\//i.test(e.getAttribute('type')||'')||AUDIO_RE.test(e.getAttribute('url')||''));
+  if(!en||!en.getAttribute('url'))return null;const pd=Date.parse(kid(it,'pubDate'));
+  return {title:kid(it,'title')||cleanName(en.getAttribute('url').split('/').pop()),url:https(en.getAttribute('url')),dur:parseLen(kid(it,'itunes:duration')),at:isNaN(pd)?0:pd}}).filter(Boolean);
+ if(!items.length)throw 0;
+ if(items.every(i=>i.at)&&items[0].at>items[items.length-1].at)items.reverse();
+ const im=ch.getElementsByTagName('itunes:image')[0],iu=[...ch.children].find(c=>c.tagName==='image');
+ const lg=kid(ch,'language').toLowerCase();
+ return feedCache[u]={title:kid(ch,'title'),author:kid(ch,'itunes:author'),lang:lg.startsWith('it')?'it':lg.startsWith('en')?'en':'',
+  image:https((im&&im.getAttribute('href'))||(iu&&kid(iu,'url'))||''),items}}
+async function analyseLinks(txt){const ls=linkLines(txt);if(!ls.length)return null;
+ if(ls.length===1&&!AUDIO_RE.test(ls[0])){try{return {feed:await loadFeed(ls[0]),url:ls[0]}}catch(e){return {err:true}}}
+ return {links:ls.map(https)}}
+const linkTitle=u=>{try{return cleanName(decodeURIComponent(new URL(u).pathname.split('/').filter(Boolean).pop()||u))}catch(e){return u}};
+function bindLinks(){
+ let tmr,seq=0;
+ const run=async()=>{const u=$('#kU');if(!u)return;const my=++seq;const pv=$('#kPrev');
+  if(!linkLines(u.value).length){pv.innerHTML='';return}
+  pv.innerHTML=`<p class="note">${t('checking')}</p>`;
+  const r=await analyseLinks(u.value);if(my!==seq||!$('#kPrev'))return;
+  if(!r){pv.innerHTML='';return}
+  if(r.err){pv.innerHTML=`<p class="note" style="color:var(--danger)">${t('feedErr')}</p>`;return}
+  if(r.feed){const f=r.feed;pv.innerHTML=`<div class="res">${coverHTML({id:'x',title:f.title||'Podcast',coverUrl:f.image})}<div class="m"><b>${esc(f.title)}</b><small>${esc(f.author)}</small><small>${t('lkFeed',f.items.length)}</small></div></div>`;
+   autoSet($('#kT'),f.title);autoSet($('#kA'),f.author);if(f.lang&&!$('#kL').dataset.touched)$('#kL').value=f.lang}
+  else{pv.innerHTML=`<p class="note">${t('lkFiles',r.links.length)}</p>`;autoSet($('#kT'),linkTitle(r.links[0]).replace(/[\s_\-–.]*(ch(apter)?|cap(itolo)?|part|parte|track)?[\s_\-.]*0*1$/i,'').trim())}
+ };
+ $('#kU').oninput=()=>{clearTimeout(tmr);tmr=setTimeout(run,500)};$('#kU').onchange=run;
+ $('#kL').onchange=()=>{$('#kL').dataset.touched=1};
+ $('#kSave').onclick=async()=>{
+  const btn=$('#kSave');btn.disabled=true;const r=await analyseLinks($('#kU').value);if($('#kSave'))btn.disabled=false;
+  if(!r)return toast(t('lkNeed'));if(r.err)return toast(t('feedErr'));
+  const id=newId(),f=r.feed;
+  const chapters=f?f.items.map(i=>{const c={title:i.title,url:i.url};if(i.dur)c.dur=i.dur;return c}):r.links.map(u=>({title:linkTitle(u),url:u}));
+  const b={id,source:'web',title:$('#kT').value.trim()||(f&&f.title)||chapters[0].title,author:$('#kA').value.trim(),lang:$('#kL').value,added:Date.now(),pos:{ch:0,t:0},chapters};
+  if(f){b.feed=r.url;if(f.image)b.coverUrl=f.image}
   await saveBook(b);await loadBooks();toast(t('added'));view={v:'book',id};history.replaceState(view,'');render();
  };
 }
@@ -654,11 +758,11 @@ async function search(){
  cat.busy=true;cat.err=false;refreshRes();
  const lang=cat.lang==='it'?'(Italian OR ita OR it)':'(English OR eng OR en)';
  const words=cat.q.replace(/[^\p{L}\p{N}\s']/gu,' ').trim();
- let q=`collection:librivoxaudio AND mediatype:audio AND language:${lang}`;
+ let q=`collection:${cat.coll} AND mediatype:audio`+(cat.coll==='oldtimeradio'?'':` AND language:${lang}`);
  const g=GENRES.find(x=>x.k===cat.genre);if(g)q+=` AND subject:(${g.s})`;
  if(words)q+=` AND (title:(${words}) OR creator:(${words}))`;
  const u='https://archive.org/advancedsearch.php?q='+encodeURIComponent(q)+'&fl[]=identifier&fl[]=title&fl[]=creator&fl[]=avg_rating&fl[]=num_reviews&rows=25&page='+cat.page+'&sort[]='+encodeURIComponent('downloads desc')+'&output=json';
- const my=cat.lang+'|'+cat.genre+'|'+cat.q+'|'+cat.page;cat.key=my;
+ const my=cat.coll+'|'+cat.lang+'|'+cat.genre+'|'+cat.q+'|'+cat.page;cat.key=my;
  try{const r=await fetch(u);if(!r.ok)throw 0;const j=await r.json();if(cat.key!==my)return;
   const docs=j.response.docs||[];
   cat.rows.push(...docs.map(d=>({id:d.identifier,title:String(first(d.title)||d.identifier),author:[].concat(d.creator||[]).join(', '),rating:iaRating(d)})));
@@ -689,7 +793,7 @@ async function addFromIA(iaId,btn){
  try{
   const j=await iaMeta(iaId);const chapters=iaChapters(j,iaId);if(!chapters.length)throw 0;
   const md=j.metadata||{};const row=cat.rows.find(r=>r.id===iaId);
-  const b={id:newId(),iaId,source:'ia',title:String(first(md.title)||iaId),author:[].concat(md.creator||[]).join(', '),lang:cat.lang,added:Date.now(),
+  const b={id:newId(),iaId,source:'ia',title:String(first(md.title)||iaId),author:[].concat(md.creator||[]).join(', '),lang:cat.coll==='oldtimeradio'?'en':cat.lang,added:Date.now(),
    coverUrl:iaCover(iaId),pos:{ch:0,t:0},chapters};
   if(row&&row.rating){b.rating=row.rating;b.rAt=Date.now()}
   await saveBook(b);await loadBooks();toast(t('added'));btn.textContent='✓';btn.classList.add('ghost');
@@ -769,7 +873,7 @@ async function doRestore(file){
  for(const bk of d.books){
   const ex=book(bk.id)||(bk.iaId&&books.find(x=>x.iaId===bk.iaId))||(bk.ytId&&books.find(x=>x.ytId===bk.ytId));
   if(ex){ex.pos=bk.pos||ex.pos;ex.finished=bk.finished;ex.lastPlayed=Math.max(ex.lastPlayed||0,bk.lastPlayed||0);if(bk.rating&&!ex.rating)ex.rating=bk.rating;await saveBook(ex);ok++}
-  else if(((bk.source==='ia'&&bk.iaId)||(bk.source==='yt'&&bk.ytId))&&Array.isArray(bk.chapters)){bk.chapters.forEach(c=>{delete c.off;delete c.size});delete bk.hasCover;await saveBook(bk);ok++}
+  else if(((bk.source==='ia'&&bk.iaId)||(bk.source==='yt'&&bk.ytId)||bk.source==='web')&&Array.isArray(bk.chapters)){bk.chapters.forEach(c=>{delete c.off;delete c.size});delete bk.hasCover;await saveBook(bk);ok++}
   else skip++;
  }
  if(d.stats){const ds=d.stats.days||{};for(const k in ds)stats.days[k]=Math.max(stats.days[k]||0,+ds[k]||0);
