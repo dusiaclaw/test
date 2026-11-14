@@ -82,6 +82,13 @@ h3{margin:22px 0 6px;font-size:17px}
 .bpbar i{display:block;height:100%;width:0;background:var(--accent)}
 .bp .times b{color:var(--ink)}
 .desc{white-space:pre-line;font-size:15px}
+#ytBox{width:100%;aspect-ratio:16/9;margin:6px 0 4px;border-radius:8px;overflow:hidden;background:#000}
+#ytBox iframe{width:100%;height:100%;border:0;display:block}
+#sheet.bg{display:flex;transform:translateX(-300vw);pointer-events:none}
+#pocket{position:fixed;inset:0;z-index:60;background:#000;display:none;place-items:center;touch-action:none;user-select:none;-webkit-user-select:none}
+#pocket.on{display:grid}
+#pocket p{color:#666;font:14px system-ui,sans-serif;transition:opacity 1s;text-align:center;padding:24px}
+textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:inherit;font:15px system-ui,sans-serif}
 /* forms */
 label{display:block;margin:12px 0 4px;font:600 14px system-ui,sans-serif;color:var(--dim)}
 input[type=text],input[type=search],select{width:100%;min-height:48px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-family:system-ui,sans-serif}
@@ -163,6 +170,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:32px;margin-top:1
     <button class="ib" id="shList" aria-label="Chapters">☰</button>
   </div>
   <div id="shCover"></div>
+  <div id="ytWrap" hidden><div id="ytBox"><div id="ytFrame"></div></div><p class="note" id="ytTap" style="text-align:center;margin:0 0 6px"></p></div>
   <h2 id="shT"></h2><p id="shA"></p><p class="chn" id="shC"></p>
   <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Position">
   <div class="times"><span id="tCur">0:00</span><span id="tDur">0:00</span></div>
@@ -176,17 +184,21 @@ input[type=range]{width:100%;accent-color:var(--accent);height:32px;margin-top:1
   <div class="row sans">
     <button class="btn ghost" id="speed">1×</button>
     <button class="btn ghost" id="sleep">☾</button>
+    <button class="btn ghost" id="pocketBtn" hidden></button>
   </div>
 </div>
 <div id="modal"><div class="box"><h3 id="mT"></h3><div id="mB"></div><div class="row" id="mBtns"></div></div></div>
+<div id="pocket"><p id="pocketHint"></p></div>
 <div id="toast"></div>
 <audio id="au" preload="metadata"></audio>
 <audio id="au2" preload="metadata"></audio>
 
 <script>
 'use strict';
-const VERSION='1.3';
+const VERSION='1.4';
 const CHANGELOG=[
+ {v:'1.4',en:['Add books from YouTube links (played with YouTube’s own player)','Pocket mode: dark, locked screen while a YouTube book plays','“Find in free catalog” for YouTube books'],
+  it:['Aggiungi libri da link YouTube (riprodotti con il lettore di YouTube)','Modalità tasca: schermo scuro e bloccato durante l’ascolto da YouTube','“Cerca nel catalogo gratuito” per i libri YouTube']},
  {v:'1.3',en:['Online rating on the book page and in the catalog','Continue listening row, search, sorting and shelves by status','Edit book details and chapter order','Catalog detail page with description and length','Listening stats','Custom skip lengths, auto-rewind, volume boost, skip silence','Backup and restore, Wi-Fi-only downloads','Update popup and changelog'],
   it:['Valutazione online nella pagina del libro e nel catalogo','Riga “Continua ad ascoltare”, ricerca, ordinamento e scaffali per stato','Modifica dei dettagli e dell’ordine dei capitoli','Pagina di dettaglio nel catalogo con descrizione e durata','Statistiche di ascolto','Salti personalizzati, riavvolgimento automatico, volume extra, salto dei silenzi','Backup e ripristino, download solo con Wi-Fi','Avviso di aggiornamento e novità']},
  {v:'1.2',en:['Listened vs total time on the book page'],it:['Tempo ascoltato e totale nella pagina del libro']},
@@ -220,6 +232,10 @@ en:{app:'Audio Shelf',all:'All',en:'English',it:'Italian',empty:'Your shelves ar
  data:'Your data',backup:'Back up',restore:'Restore',backupNote:'The backup holds your library list, listening positions, stats and settings — not the audio files.',
  restored:(a,s)=>a+' book'+(a==1?'':'s')+' restored'+(s?', '+s+' uploaded book'+(s==1?'':'s')+' skipped (add the audio files again)':''),badFile:'This is not an Audio Shelf backup file.',
  updT:'Update available',updMsg:v=>'Version '+v+' of Audio Shelf is ready.',updNow:'Update now',later:'Later',upToDate:'You have the latest version.',checkUpd:'Check for updates',
+ youtube:'YouTube',ytNote:'Paste a YouTube link. The book plays inside the app with YouTube’s own player: it needs internet, cannot be saved offline, and stops if the screen turns off — use Pocket mode to keep listening with a dark screen.',
+ ytLink:'YouTube link',ytStamps:'Chapter times (optional)',ytStampsPh:'Paste the chapter list from the video description, one per line:\n0:00 Chapter 1\n12:45 Chapter 2',ytBad:'This does not look like a YouTube link.',
+ ytWhole:'Full recording',ytIntro:'Start',ytOpen:'Open on YouTube',ytBlocked:'The owner of this video does not allow playing it inside other apps.',ytGone:'This video is not available.',
+ ytTapMsg:'If it does not start, tap the video.',findCat:'Find in free catalog',pocket:'◐ Pocket mode',pocketHint:'Pocket mode — hold anywhere for 2 seconds to unlock',pocketNo:'This browser cannot keep the screen awake, so Pocket mode is not available.',
  whatsNew:'What’s new',changelog:'Changelog',ok:'OK'},
 it:{app:'Audio Shelf',all:'Tutti',en:'Inglese',it:'Italiano',empty:'I tuoi scaffali sono vuoti.',addFirst:'Aggiungi il primo libro',nomatch:'Nessun libro corrisponde.',
  add:'Aggiungi un libro',upload:'Dal telefono',catalog:'Catalogo gratuito',sites:'Siti gratuiti',
@@ -246,6 +262,10 @@ it:{app:'Audio Shelf',all:'Tutti',en:'Inglese',it:'Italiano',empty:'I tuoi scaff
  data:'I tuoi dati',backup:'Backup',restore:'Ripristina',backupNote:'Il backup contiene l’elenco dei libri, le posizioni di ascolto, le statistiche e le impostazioni, non i file audio.',
  restored:(a,s)=>a+' libr'+(a==1?'o':'i')+' ripristinat'+(a==1?'o':'i')+(s?', '+s+' libr'+(s==1?'o':'i')+' caricat'+(s==1?'o':'i')+' saltat'+(s==1?'o':'i')+' (aggiungi di nuovo i file audio)':''),badFile:'Questo non è un file di backup di Audio Shelf.',
  updT:'Aggiornamento disponibile',updMsg:v=>'La versione '+v+' di Audio Shelf è pronta.',updNow:'Aggiorna ora',later:'Più tardi',upToDate:'Hai già l’ultima versione.',checkUpd:'Cerca aggiornamenti',
+ youtube:'YouTube',ytNote:'Incolla un link di YouTube. Il libro viene riprodotto nell’app con il lettore di YouTube: serve internet, non si può salvare offline e si ferma se lo schermo si spegne — usa la Modalità tasca per ascoltare con lo schermo scuro.',
+ ytLink:'Link YouTube',ytStamps:'Tempi dei capitoli (facoltativo)',ytStampsPh:'Incolla l’elenco dei capitoli dalla descrizione del video, uno per riga:\n0:00 Capitolo 1\n12:45 Capitolo 2',ytBad:'Non sembra un link di YouTube.',
+ ytWhole:'Registrazione completa',ytIntro:'Inizio',ytOpen:'Apri su YouTube',ytBlocked:'Il proprietario del video non permette di riprodurlo in altre app.',ytGone:'Questo video non è disponibile.',
+ ytTapMsg:'Se non parte, tocca il video.',findCat:'Cerca nel catalogo gratuito',pocket:'◐ Modalità tasca',pocketHint:'Modalità tasca — tieni premuto 2 secondi per sbloccare',pocketNo:'Questo browser non può tenere acceso lo schermo: la Modalità tasca non è disponibile.',
  whatsNew:'Novità',changelog:'Novità delle versioni',ok:'OK'}
 };
 const LS={get(k,d){try{const v=localStorage.getItem('as_'+k);return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem('as_'+k,v)}catch(e){}}};
@@ -379,7 +399,7 @@ function streak(){let n=0;const d=new Date();if((stats.days[dayKey(d)]||0)<60)d.
  while((stats.days[dayKey(d)]||0)>=60){n++;d.setDate(d.getDate()-1)}return n}
 /* ---------- navigation ---------- */
 function nav(v){view=v;history.pushState(v,'');render()}
-window.addEventListener('popstate',e=>{if($('#sheet').classList.contains('on')){$('#sheet').classList.remove('on')}view=e.state||{v:'lib'};render()});
+window.addEventListener('popstate',e=>{if($('#pocket').classList.contains('on')){pocketOff();return}if($('#sheet').classList.contains('on')){$('#sheet').classList.remove('on')}view=e.state||{v:'lib'};render()});
 $('#back').onclick=()=>history.back();
 $('#btnAdd').onclick=()=>nav({v:'add',tab:'upload'});
 $('#btnSet').onclick=()=>nav({v:'set'});
@@ -453,10 +473,10 @@ function renderBook(m,b){
  }
  m.innerHTML=`<div class="hero">${coverHTML(b)}<div><h2>${esc(b.title)}</h2><p>${esc(b.author||'')}</p>
   <p id="bRate" style="margin-top:6px">${ratingHTML(b.rating)}</p>
-  <p class="sans" style="font-size:13px;margin-top:6px">${t(b.lang)} · ${b.chapters.length} ${t('chapters').toLowerCase()}<br>${isOffline(b)?t(b.source==='local'?'local':'offline'):t('online')}</p></div></div>
+  <p class="sans" style="font-size:13px;margin-top:6px">${t(b.lang)} · ${b.chapters.length} ${t('chapters').toLowerCase()}<br>${b.source==='yt'?`<a href="https://www.youtube.com/watch?v=${esc(b.ytId)}" target="_blank" rel="noopener" style="color:var(--accent)">${t('ytOpen')}</a>`:isOffline(b)?t(b.source==='local'?'local':'offline'):t('online')}</p></div></div>
   <div class="bp sans" id="bp" hidden><div class="bpbar"><i id="bpI"></i></div><div class="times"><span id="bpL"></span><span id="bpR"></span></div></div>
   <div class="row"><button class="btn" id="bPlay">▶ ${st?t('resume'):t('play')}</button>${st?`<button class="btn ghost" id="bRestart">${t('restart')}</button>`:''}</div>
-  <div class="row">${dl}<button class="btn ghost" id="bEdit">✎ ${t('edit')}</button></div>
+  <div class="row">${dl}${b.source==='yt'?`<button class="btn ghost" id="bFind">🔎 ${t('findCat')}</button>`:''}<button class="btn ghost" id="bEdit">✎ ${t('edit')}</button></div>
   <ul class="list">${b.chapters.map((c,i)=>`<li><button class="ch ${player.id===b.id&&player.ch===i?'cur':''} ${i<p.ch||b.finished?'done':''}" data-i="${i}">
    <span class="n">${i+1}</span><span class="t">${esc(c.title)}</span><span class="d">${c.off&&b.source==='ia'?'⬇ ':''}${c.dur?fmt(c.dur):''}</span></button></li>`).join('')}</ul>
   <button class="btn danger wide" id="bDel">${t('del')}</button>`;
@@ -467,6 +487,7 @@ function renderBook(m,b){
  const d=$('#dl');if(d)d.onclick=()=>job?(job.stop=true):downloadBook(b);
  const rm=$('#rmdl');if(rm)rm.onclick=()=>removeOffline(b);
  $('#bEdit').onclick=()=>nav({v:'edit',id:b.id});
+ const bf=$('#bFind');if(bf)bf.onclick=()=>{cat.q=ytClean(b.title);cat.lang=b.lang;cat.genre='';cat.page=1;cat.rows=[];cat.done=false;nav({v:'add',tab:'catalog'})};
  $('#bDel').onclick=()=>modal(t('del'),`<p>${t('delQ')}</p>`,[{label:t('cancel'),cls:'ghost'},{label:t('del'),cls:'danger',fn:()=>deleteBook(b)}]);
 }
 async function downloadBook(b){
@@ -507,7 +528,7 @@ function renderEdit(m,b){
   <label>${t('chOrder')}</label><div id="eCh"></div>
   <div class="row"><button class="btn wide" id="eSave">${t('saveCh')}</button></div>`;
  const list=()=>{$('#eCh').innerHTML=draft.ch.map((d,i)=>`<div class="er"><input type="text" value="${esc(d.title)}" data-i="${i}" aria-label="${t('chapter')} ${i+1}">
-   <button class="ib" data-up="${i}" ${i?'':'disabled'} aria-label="Up">▲</button><button class="ib" data-dn="${i}" ${i<draft.ch.length-1?'':'disabled'} aria-label="Down">▼</button></div>`).join('');
+   ${b.source==='yt'?'':`<button class="ib" data-up="${i}" ${i?'':'disabled'} aria-label="Up">▲</button><button class="ib" data-dn="${i}" ${i<draft.ch.length-1?'':'disabled'} aria-label="Down">▼</button>`}</div>`).join('');
   $('#eCh').querySelectorAll('input').forEach(x=>x.oninput=()=>draft.ch[+x.dataset.i].title=x.value);
   const mv=(i,j)=>{[draft.ch[i],draft.ch[j]]=[draft.ch[j],draft.ch[i]];list()};
   $('#eCh').querySelectorAll('[data-up]').forEach(x=>x.onclick=()=>mv(+x.dataset.up,+x.dataset.up-1));
@@ -532,7 +553,7 @@ let cat={lang:LS.get('catLang',ui),genre:'',q:'',page:1,rows:[],busy:false,more:
 const metaCache={};
 function renderAdd(m){
  const tab=view.tab||'upload';
- let h=`<div class="chips">${['upload','catalog','sites'].map(x=>`<button class="chip ${tab===x?'on':''}" data-t="${x}">${t(x)}</button>`).join('')}</div>`;
+ let h=`<div class="chips">${['upload','catalog','youtube','sites'].map(x=>`<button class="chip ${tab===x?'on':''}" data-t="${x}">${t(x)}</button>`).join('')}</div>`;
  if(tab==='upload')h+=`
   <p class="note">${t('upNote')}</p>
   <label class="filebtn"><input type="file" id="fAudio" accept="audio/*,.mp3,.m4a,.m4b,.ogg,.opus,.wav,.flac,.aac" multiple><span class="btn ghost wide" id="fAudioL">🎧 ${t('pickAudio')}</span></label>
@@ -547,10 +568,18 @@ function renderAdd(m){
   <select id="sG" aria-label="${t('genre')}" style="margin-bottom:10px"><option value="">${t('gAll')}</option>${GENRES.map(g=>`<option value="${g.k}" ${cat.genre===g.k?'selected':''}>${esc(g[ui]||g.en)}</option>`).join('')}</select>
   <form id="sForm" style="display:flex;gap:8px"><input type="search" id="sQ" placeholder="${t('search')}" value="${esc(cat.q)}" enterkeyhint="search"><button class="btn">${t('go')}</button></form>
   <div id="sRes">${resHTML()}</div>`}
+ else if(tab==='youtube')h+=`<p class="note">${t('ytNote')}</p>
+  <label for="yU">${t('ytLink')}</label><input type="text" id="yU" inputmode="url" placeholder="https://youtu.be/…" autocomplete="off">
+  <label for="yT">${t('bTitle')}</label><input type="text" id="yT" autocomplete="off">
+  <label for="yA">${t('bAuthor')}</label><input type="text" id="yA" autocomplete="off">
+  <label for="yL">${t('bLang')}</label><select id="yL"><option value="en">${t('en')}</option><option value="it" ${ui==='it'?'selected':''}>${t('it')}</option></select>
+  <label for="yS">${t('ytStamps')}</label><textarea id="yS" rows="5" placeholder="${t('ytStampsPh')}"></textarea>
+  <div class="row"><button class="btn wide" id="ySave">${t('save')}</button></div>`;
  else h+=`<p class="note">${t('sitesNote')}</p>`+SITES.map(s=>`<a class="site" href="${s.u}" target="_blank" rel="noopener"><b>${esc(s.n)}</b> <span class="sans" style="font-size:12px;color:var(--dim)">${s.l}</span><small>${esc(s[ui]||s.en)}</small></a>`).join('');
  m.innerHTML=h;
  m.querySelectorAll('.chip[data-t]').forEach(c=>c.onclick=()=>{view={v:'add',tab:c.dataset.t};history.replaceState(view,'');render()});
  if(tab==='upload')bindUpload();
+ if(tab==='youtube')bindYT();
  if(tab==='catalog'){
   m.querySelectorAll('.chip[data-l]').forEach(c=>c.onclick=()=>{cat.lang=c.dataset.l;LS.set('catLang',cat.lang);cat.page=1;cat.rows=[];search()});
   $('#sG').onchange=()=>{cat.genre=$('#sG').value;cat.q=$('#sQ').value.trim();cat.page=1;cat.rows=[];search()};
@@ -575,6 +604,29 @@ function bindUpload(){
    if(fc.files[0]){await dbPut('covers',fc.files[0],id);b.hasCover=true}
    await saveBook(b);await loadBooks();toast(t('added'));view={v:'book',id};history.replaceState(view,'');render();
   }catch(e){toast(String(e&&e.message||e));btn.disabled=false;btn.textContent=t('save')}
+ };
+}
+/* YouTube books: played with YouTube's embedded player, nothing is downloaded */
+const ytId=u=>{u=String(u).trim();const m=u.match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/|\/live\/)([\w-]{11})/);return m?m[1]:(/^[\w-]{11}$/.test(u)?u:'')};
+const ytClean=s=>cleanTitle(String(s).split('|')[0]).replace(/\b(full|complete|unabridged|audio\s?books?|audiolibro|completo|integrale|lettura integrale)\b/gi,' ').replace(/\s+/g,' ').trim();
+function parseStamps(txt){const out=[];
+ for(const line of String(txt).split('\n')){const m=line.match(/(?:(\d{1,2}):)?(\d{1,2}):(\d{2})/);if(!m)continue;
+  out.push({start:(+m[1]||0)*3600+(+m[2])*60+(+m[3]),title:line.replace(m[0],' ').replace(/^[\s\-–—:|.()\[\]]+|[\s\-–—:|.()\[\]]+$/g,'').trim()})}
+ out.sort((a,b)=>a.start-b.start);return out.filter((c,i)=>!i||c.start>out[i-1].start)}
+function bindYT(){
+ $('#yU').onchange=async()=>{const id=ytId($('#yU').value);if(!id||$('#yT').value)return;
+  const w=encodeURIComponent('https://www.youtube.com/watch?v='+id);
+  for(const u of ['https://www.youtube.com/oembed?format=json&url='+w,'https://noembed.com/embed?url='+w]){
+   try{const j=await(await fetch(u)).json();if(j&&j.title){if(!$('#yT')||$('#yT').value)return;$('#yT').value=j.title;return}}catch(e){}}};
+ $('#ySave').onclick=async()=>{
+  const vid=ytId($('#yU').value);if(!vid)return toast(t('ytBad'));
+  const ex=books.find(b=>b.ytId===vid);if(ex){view={v:'book',id:ex.id};history.replaceState(view,'');return render()}
+  let ch=parseStamps($('#yS').value).map((c,i)=>({start:c.start,title:c.title||t('chapter')+' '+(i+1)}));
+  if(!ch.length)ch=[{start:0,title:t('ytWhole')}];else if(ch[0].start>5)ch.unshift({start:0,title:t('ytIntro')});else ch[0].start=0;
+  const id=newId();
+  const b={id,ytId:vid,source:'yt',title:$('#yT').value.trim()||'YouTube '+vid,author:$('#yA').value.trim(),lang:$('#yL').value,added:Date.now(),
+   coverUrl:'https://i.ytimg.com/vi/'+vid+'/hqdefault.jpg',pos:{ch:0,t:0},chapters:ch};
+  await saveBook(b);await loadBooks();toast(t('added'));view={v:'book',id};history.replaceState(view,'');render();
  };
 }
 const byName=(a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true,sensitivity:'base'});
@@ -715,9 +767,9 @@ async function doRestore(file){
  if(!d||d.app!=='audioshelf'||!Array.isArray(d.books))return toast(t('badFile'));
  let ok=0,skip=0;
  for(const bk of d.books){
-  const ex=book(bk.id)||(bk.iaId&&books.find(x=>x.iaId===bk.iaId));
+  const ex=book(bk.id)||(bk.iaId&&books.find(x=>x.iaId===bk.iaId))||(bk.ytId&&books.find(x=>x.ytId===bk.ytId));
   if(ex){ex.pos=bk.pos||ex.pos;ex.finished=bk.finished;ex.lastPlayed=Math.max(ex.lastPlayed||0,bk.lastPlayed||0);if(bk.rating&&!ex.rating)ex.rating=bk.rating;await saveBook(ex);ok++}
-  else if(bk.source==='ia'&&bk.iaId&&Array.isArray(bk.chapters)){bk.chapters.forEach(c=>{delete c.off;delete c.size});delete bk.hasCover;await saveBook(bk);ok++}
+  else if(((bk.source==='ia'&&bk.iaId)||(bk.source==='yt'&&bk.ytId))&&Array.isArray(bk.chapters)){bk.chapters.forEach(c=>{delete c.off;delete c.size});delete bk.hasCover;await saveBook(bk);ok++}
   else skip++;
  }
  if(d.stats){const ds=d.stats.days||{};for(const k in ds)stats.days[k]=Math.max(stats.days[k]||0,+ds[k]||0);
@@ -740,7 +792,52 @@ async function doUpdate(){savePos();saveStats();
  location.reload()}
 /* ---------- player ---------- */
 const auS=$('#au'),auL=$('#au2');let au=auS;
-const onAu=(ev,fn)=>[auS,auL].forEach(el=>el.addEventListener(ev,e=>{if(el===au)fn(e)}));
+/* auY behaves like an <audio> element but drives YouTube's embedded player; times are relative to the current chapter */
+const auY=(()=>{
+ const Ls={};let yp=null,creating=false,ready=false,vid='',start=0,end=null,total=0,meta=false,playing=false,want=null,rate=1,apiP=null;
+ const fire=ev=>(Ls[ev]||[]).forEach(f=>{try{f({type:ev})}catch(e){console.error(e)}});
+ const now=()=>{try{return ready?(yp.getCurrentTime()||0):(want?want.abs:start)}catch(e){return start}};
+ const api=()=>apiP||(apiP=new Promise((res,rej)=>{if(window.YT&&YT.Player)return res();window.onYouTubeIframeAPIReady=()=>res();
+  const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';s.onerror=()=>{apiP=null;rej()};document.head.appendChild(s)}));
+ function checkMeta(){if(!meta&&ready&&vid){let d=0;try{d=yp.getDuration()||0}catch(e){}if(d>0){total=d;meta=true;fire('loadedmetadata')}}}
+ function state(s){checkMeta();
+  if(s===1){if(!playing){playing=true;fire('play')}}
+  else if(s===2){if(playing){playing=false;fire('pause')}}
+  else if(s===0){if(playing||vid){playing=false;fire('ended')}}}
+ function create(){if(yp||creating||!want)return;creating=true;const w=want;
+  api().then(()=>{yp=new YT.Player('ytFrame',{width:'100%',height:'100%',videoId:w.vid,
+   playerVars:{playsinline:1,rel:0,start:Math.floor(w.abs),autoplay:1,origin:location.origin},
+   events:{onReady:()=>{ready=true;creating=false;try{yp.setPlaybackRate(rate)}catch(e){}
+     const x=want;want=null;if(!vid){try{yp.stopVideo()}catch(e){}return}
+     if(x&&(x.vid!==w.vid||Math.abs(x.abs-w.abs)>2))yp.loadVideoById({videoId:x.vid,startSeconds:x.abs});else yp.playVideo()},
+    onStateChange:e=>state(e.data),onError:e=>{o.errCode=e.data;fire('error')}}})
+  }).catch(()=>{creating=false;o.errCode=-1;fire('error')})}
+ setInterval(()=>{if(!vid||!ready)return;checkMeta();
+  if(playing){if(end!=null&&now()>=end-0.25){fire('ended');return}fire('timeupdate')}},500);
+ const o={id:'yt',errCode:0,
+  addEventListener(ev,fn){(Ls[ev]=Ls[ev]||[]).push(fn)},
+  open(v,s,e,rel,auto){const a=s+(rel||0);const same=ready&&v===vid;vid=v;start=s;end=e;o.errCode=0;
+   if(same){if(Math.abs(now()-a)>2)yp.seekTo(a,true);if(auto)yp.playVideo();else yp.pauseVideo();setTimeout(()=>{if(meta)fire('loadedmetadata')},0)}
+   else{meta=false;total=0;
+    if(ready){want=null;if(auto)yp.loadVideoById({videoId:v,startSeconds:a});else yp.cueVideoById({videoId:v,startSeconds:a})}
+    else{want={vid:v,abs:a};if(auto)create()}}},
+  get total(){return total},
+  get currentTime(){return Math.max(0,now()-start)},
+  set currentTime(v){const a=start+Math.max(0,v);if(ready){if(Math.abs(now()-a)>1.5)yp.seekTo(a,true)}else if(want)want.abs=a},
+  get duration(){return total?Math.max(0,(end??total)-start):NaN},
+  get paused(){return !playing},
+  get readyState(){return meta?4:0},
+  get src(){return vid},
+  getAttribute(){return vid||null},
+  removeAttribute(){if(ready){try{yp.stopVideo()}catch(e){}}vid='';want=null;playing=false;meta=false;total=0},
+  load(){},
+  play(){if(ready)yp.playVideo();else create();return Promise.resolve()},
+  pause(){if(ready){try{yp.pauseVideo()}catch(e){}}},
+  get playbackRate(){return rate},
+  set playbackRate(v){rate=v;if(ready){try{yp.setPlaybackRate(v)}catch(e){}}}};
+ return o})();
+const chapEnd=(b,ch)=>(b.chapters[ch+1]||{}).start??null;
+const onAu=(ev,fn)=>[auS,auL,auY].forEach(el=>el.addEventListener(ev,e=>{if(el===au)fn(e)}));
 const player={id:null,ch:0,url:null,seekTo:0,lastSave:0,sleepEnd:false,sleepT:null,sleepMin:0,pausedAt:0};
 const SPEEDS=[0.75,1,1.25,1.5,1.75,2];let speed=+LS.get('speed',1)||1;
 const skB=()=>+LS.get('skB','15')||15,skF=()=>+LS.get('skF','30')||30;
@@ -766,16 +863,19 @@ async function playBook(id,ch,tm,auto=true){
  savePos();
  const c=b.chapters[ch];let src=c.url,blobUrl=null;
  if(c.off||b.source==='local'){const bl=await dbGet('audio',akey(b,ch));if(bl){blobUrl=URL.createObjectURL(bl);src=blobUrl}}
- if(!src){toast(t('playErr'));return}
- const el=blobUrl?auL:auS;
+ const yt=b.source==='yt';
+ if(!src&&!yt){toast(t('playErr'));return}
+ const el=yt?auY:blobUrl?auL:auS;
  if(au!==el){const old=au;au=el;old.pause();old.removeAttribute('src');old.load()}
  if(player.url)URL.revokeObjectURL(player.url);player.url=blobUrl;
  player.id=id;player.ch=ch;player.seekTo=tm||0;
- au.src=src;au.playbackRate=speed;
+ if(yt)auY.open(b.ytId,c.start||0,chapEnd(b,ch),player.seekTo,auto);else au.src=src;
+ au.playbackRate=speed;
  b.pos={ch,t:player.seekTo};if(auto){b.finished=false;b.lastPlayed=Date.now();player.pausedAt=0}else player.pausedAt=b.lastPlayed||0;
  saveBook(b);LS.set('last',id);
  applyFx();
- if(auto)au.play().catch(()=>{});
+ if(auto&&!yt)au.play().catch(()=>{});
+ if(auto&&yt)openSheet();
  setMediaSession(b);updatePlayerUI();
  if(view.v==='book'&&view.id===id)renderBook($('#main'),b);
 }
@@ -784,7 +884,9 @@ function savePos(){const b=book(player.id);if(!b||!au.src||au.readyState<1)retur
  b.pos={ch:player.ch,t:au.currentTime||0};const c=b.chapters[player.ch];if(c&&isFinite(au.duration)&&au.duration>0)c.dur=au.duration;saveBook(b)}
 let statTick=0,statDirty=0;
 onAu('loadedmetadata',()=>{if(player.seekTo>0&&player.seekTo<(au.duration||Infinity)-2)au.currentTime=player.seekTo;player.seekTo=0;au.playbackRate=speed;
- const b=book(player.id);if(b&&isFinite(au.duration)&&b.chapters[player.ch]){b.chapters[player.ch].dur=au.duration}updateTime()});
+ const b=book(player.id);if(b&&isFinite(au.duration)&&b.chapters[player.ch]){b.chapters[player.ch].dur=au.duration}
+ if(b&&b.source==='yt'&&au===auY&&auY.total){b.chapters.forEach((c,i)=>{c.dur=Math.max(1,((b.chapters[i+1]||{}).start??auY.total)-c.start)});saveBook(b)}
+ updateTime()});
 onAu('timeupdate',()=>{updateTime();const n=Date.now();
  if(!au.paused){const d=(n-statTick)/1000;if(statTick&&d>0&&d<2){const k=dayKey();stats.days[k]=(stats.days[k]||0)+d;statDirty+=d;if(statDirty>10){statDirty=0;saveStats()}}statTick=n}
  if(n-player.lastSave>5000){player.lastSave=n;savePos()}});
@@ -798,10 +900,10 @@ onAu('ended',()=>{const b=book(player.id);if(!b)return;
  if(player.sleepEnd){player.sleepEnd=false;updateSleepLabel();if(player.ch<b.chapters.length-1)playBook(b.id,player.ch+1,0,false);return}
  if(player.ch<b.chapters.length-1)playBook(b.id,player.ch+1,0);
  else{b.pos={ch:0,t:0};b.finished=true;saveBook(b);stats.fin.push({id:b.id,title:b.title,at:Date.now()});saveStats();updatePlayerUI();if(view.v==='book'&&view.id===b.id)renderBook($('#main'),b)}});
-onAu('error',()=>{if(player.id&&au.getAttribute('src'))toast(t('playErr'))});
+onAu('error',()=>{if(!player.id||!au.getAttribute('src'))return;const c=au===auY?auY.errCode:0;toast(t(c===101||c===150?'ytBlocked':c===100?'ytGone':'playErr'))});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){savePos();saveStats()}});
 window.addEventListener('pagehide',()=>{savePos();saveStats()});
-function toggle(){if(!player.id)return;au.paused?au.play().catch(()=>{}):au.pause()}
+function toggle(){if(!player.id)return;if(au===auY&&au.paused)openSheet();au.paused?au.play().catch(()=>{}):au.pause()}
 function skip(d){if(!player.id)return;au.currentTime=Math.max(0,Math.min((au.duration||1e9)-1,au.currentTime+d))}
 function chStep(d){const b=book(player.id);if(!b)return;
  if(d<0&&au.currentTime>5){au.currentTime=0;return}
@@ -815,7 +917,9 @@ function updateTime(){
 }
 function updatePlayerUI(){
  const b=book(player.id);const mini=$('#mini');
- mini.classList.toggle('on',!!b);if(!b){$('#sheet').classList.remove('on');return}
+ mini.classList.toggle('on',!!b);const sh=$('#sheet');if(!b){sh.classList.remove('on','bg');return}
+ const yt=b.source==='yt';sh.classList.toggle('bg',yt&&!sh.classList.contains('on'));
+ $('#ytWrap').hidden=!yt;$('#shCover').hidden=yt;$('#pocketBtn').hidden=!yt;$('#pocketBtn').textContent=t('pocket');$('#ytTap').textContent=t('ytTapMsg');
  const c=b.chapters[player.ch]||b.chapters[0];const icon=au.paused?'▶':'❚❚';
  $('#miniPlay').textContent=icon;$('#play').textContent=icon;
  const key=b.id+'|'+coverSrc(b)+'|'+b.title;
@@ -831,7 +935,21 @@ $('#seek').addEventListener('change',()=>{if(isFinite(au.duration))au.currentTim
 $('#miniPlay').onclick=toggle;$('#play').onclick=toggle;
 $('#rw').onclick=()=>skip(-skB());$('#ff').onclick=()=>skip(skF());
 $('#prev').onclick=()=>chStep(-1);$('#next').onclick=()=>chStep(1);
-$('#miniOpen').onclick=()=>{history.pushState(view,'');$('#sheet').classList.add('on')};
+function openSheet(){const s=$('#sheet');if(s.classList.contains('on'))return;history.pushState(view,'');s.classList.remove('bg');s.classList.add('on')}
+$('#miniOpen').onclick=openSheet;
+/* pocket mode: keep the phone awake behind a black, touch-locked screen */
+let wakeL=null,pkT=null;
+async function wake(){try{if('wakeLock' in navigator){wakeL=await navigator.wakeLock.request('screen');return true}}catch(e){}return false}
+const pkHint=on=>{const h=$('#pocketHint');h.textContent=t('pocketHint');h.style.opacity=on?1:0};
+async function pocketOn(){if(!(await wake()))return toast(t('pocketNo'));
+ history.pushState(view,'');$('#pocket').classList.add('on');pkHint(true);setTimeout(()=>pkHint(false),4000);
+ try{const d=document.documentElement;if(d.requestFullscreen)d.requestFullscreen().catch(()=>{})}catch(e){}}
+function pocketOff(){$('#pocket').classList.remove('on');clearTimeout(pkT);try{if(wakeL)wakeL.release()}catch(e){}wakeL=null;
+ try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}}
+$('#pocketBtn').onclick=pocketOn;
+$('#pocket').addEventListener('pointerdown',e=>{e.preventDefault();pkHint(true);clearTimeout(pkT);pkT=setTimeout(()=>history.back(),2000)});
+['pointerup','pointercancel','pointerleave'].forEach(ev=>$('#pocket').addEventListener(ev,()=>{clearTimeout(pkT);setTimeout(()=>pkHint(false),1500)}));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&$('#pocket').classList.contains('on'))wake()});
 $('#shClose').onclick=()=>history.back();
 $('#shList').onclick=()=>{$('#sheet').classList.remove('on');view={v:'book',id:player.id};history.replaceState(view,'');render()};
 $('#speed').onclick=()=>{speed=SPEEDS[(SPEEDS.indexOf(speed)+1)%SPEEDS.length];LS.set('speed',speed);silFast=false;au.playbackRate=speed;$('#speed').textContent=speed+'×'};
